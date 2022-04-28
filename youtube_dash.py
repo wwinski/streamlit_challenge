@@ -20,7 +20,7 @@ def load_data():
 
     # Read in the datasets
     agg_df = pd.read_csv(Path(__file__).parents[0] / 'data/Youtube_Dashboard/Aggregated_Metrics_By_Video.csv').iloc[1:, :]
-    subscriber_df = pd.read_csv(Path(__file__).parents[0] / 'data/Youtube_Dashboard/Aggregated_Metrics_By_Country_And_Subscriber_status.csv')
+    subscriber_df = pd.read_csv(Path(__file__).parents[0] / 'data/Youtube_Dashboard/Aggregated_Metrics_By_Country_And_Subscriber_Status.csv')
     comments_df = pd.read_csv(Path(__file__).parents[0] / 'data/Youtube_Dashboard/All_Comments_Final.csv')
     performance_df = pd.read_csv(Path(__file__).parents[0] / 'data/Youtube_Dashboard/Video_Performance_Over_Time.csv')
 
@@ -177,10 +177,6 @@ def country_code_map(country_code):
 
 # Use the full page instead of a narrow central column
 st.set_page_config(page_title='Ken Jee YouTube Data', page_icon=':chart_with_upwards_trend:', layout="wide")
-
-import os
-st.header(os.listdir(Path(__file__).parents[0] / 'data/Youtube_Dashboard/'))
-exit()
 
 # Read in data
 (agg_df, subscriber_df, comments_df, performance_df, diff_df, performance_diff, views_cumulative) = load_data()
