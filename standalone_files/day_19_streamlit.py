@@ -1,4 +1,4 @@
-# Tutorial app from Day 9 of Streamlit 30 Days Challenge
+# Tutorial app from Day 19 of Streamlit 30 Days Challenge
 
 # Imports
 import streamlit as st
