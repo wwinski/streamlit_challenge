@@ -119,6 +119,9 @@ def write_individual_video_metrics(agg_df, subscriber_df, performance_diff, view
     videos = tuple(agg_df['Video title'])
     selected_video = st.selectbox('Pick a Video:', videos)
     
+    # Columns to hold charts
+    col1, col2 = st.columns(2)
+
     # Filter data to selected video
     sub_filtered = subscriber_df[subscriber_df['Video Title'] == selected_video].copy()
     sub_filtered['Country'] = sub_filtered['Country Code'].apply(country_code_map)
@@ -126,7 +129,7 @@ def write_individual_video_metrics(agg_df, subscriber_df, performance_diff, view
     
     # Create chart for filtered data
     fig = px.bar(sub_filtered, x='Views', y='Is Subscribed', color='Country', orientation='h')
-    st.plotly_chart(fig)
+    col1.plotly_chart(fig)
     
     # Get data during the first 30 days
     agg_time_filtered = performance_diff[performance_diff['Video Title'] == selected_video].copy()
@@ -144,7 +147,7 @@ def write_individual_video_metrics(agg_df, subscriber_df, performance_diff, view
     fig2.add_trace(go.Scatter(x=first_30['days_published'], y=first_30['Views'].cumsum(),
                         mode='lines', name='Current Video' ,line=dict(color='firebrick',width=8)))
     fig2.update_layout(title='View comparison first 30 days', xaxis_title='Days Since Published', yaxis_title='Cumulative views')
-    st.plotly_chart(fig2)
+    col2.plotly_chart(fig2)
 
 
 def style_df_vals(v):
@@ -172,6 +175,10 @@ def country_code_map(country_code):
 
 
 ##### Main #####
+
+# Use the full page instead of a narrow central column
+st.set_page_config(layout="wide")
+# Read in data
 (agg_df, subscriber_df, comments_df, performance_df, diff_df, performance_diff, views_cumulative) = load_data()
 
 
