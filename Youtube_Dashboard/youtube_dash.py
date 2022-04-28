@@ -5,6 +5,7 @@ import plotly.graph_objects as go
 import plotly.express as px
 import streamlit as st
 from datetime import datetime
+from pathlib import Path
 
 
 # Global Functions
@@ -18,10 +19,10 @@ def load_data():
     '''
 
     # Read in the datasets
-    agg_df = pd.read_csv('Youtube_Dashboard/Aggregated_Metrics_By_Video.csv').iloc[1:, :]
-    subscriber_df = pd.read_csv('Youtube_Dashboard/Aggregated_Metrics_By_Country_And_Subscriber_status.csv')
-    comments_df = pd.read_csv('Youtube_Dashboard/All_Comments_Final.csv').iloc[1:, :]
-    performance_df = pd.read_csv('Youtube_Dashboard/Video_Performance_Over_Time.csv').iloc[1:, :]
+    agg_df = pd.read_csv(Path(__file__).parents[0] / 'Aggregated_Metrics_By_Video.csv').iloc[1:, :]
+    subscriber_df = pd.read_csv(Path(__file__).parents[0] / 'Aggregated_Metrics_By_Country_And_Subscriber_status.csv')
+    comments_df = pd.read_csv(Path(__file__).parents[0] / 'All_Comments_Final.csv')
+    performance_df = pd.read_csv(Path(__file__).parents[0] / 'Video_Performance_Over_Time.csv')
 
     # Manipulations to datasets
     agg_df.columns = ['Video', 'Video title', 'Video publish time', 'Comments added', 'Shares', 'Dislikes', 'Likes', 'Subscribers lost',
@@ -112,8 +113,6 @@ def write_aggregate_metrics(agg_df, diff_df):
 
 def write_individual_video_metrics(agg_df, subscriber_df, performance_diff, views_cumulative):
     ''' Will be used to create/format/write metrics for individual video performance '''
-
-    st.write("Individual Video Performance")
     
     # Populate list of videos and get selected
     videos = tuple(agg_df['Video title'])
@@ -185,8 +184,8 @@ st.set_page_config(page_title='Ken Jee YouTube Data', page_icon=':chart_with_upw
 # Show separate dashboard based on selection
 add_sidebar = st.sidebar.selectbox('Aggregate or Individual Video', ('Aggregate Metrics','Individual Video Analysis'))
 if add_sidebar == 'Aggregate Metrics':
-    st.write('Ken Jee YouTube Aggregated Data')
+    st.header('Ken Jee YouTube Aggregated Data')
     write_aggregate_metrics(agg_df, diff_df)
 elif add_sidebar == 'Individual Video Analysis':
-    st.write('Ken Jee YouTube Individual Video Metrics')
+    st.header('Ken Jee YouTube Individual Video Metrics')
     write_individual_video_metrics(agg_df, subscriber_df, performance_diff, views_cumulative)
