@@ -178,6 +178,10 @@ def country_code_map(country_code):
 # Use the full page instead of a narrow central column
 st.set_page_config(page_title='Ken Jee YouTube Data', page_icon=':chart_with_upwards_trend:', layout="wide")
 
+import os
+st.header(os.listdir(Path(__file__).parents[0] / 'data/Youtube_Dashboard/'))
+exit()
+
 # Read in data
 (agg_df, subscriber_df, comments_df, performance_df, diff_df, performance_diff, views_cumulative) = load_data()
 
