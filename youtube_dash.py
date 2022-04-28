@@ -19,10 +19,10 @@ def load_data():
     '''
 
     # Read in the datasets
-    agg_df = pd.read_csv(Path(__file__).parents[0] / 'Aggregated_Metrics_By_Video.csv').iloc[1:, :]
-    subscriber_df = pd.read_csv(Path(__file__).parents[0] / 'Aggregated_Metrics_By_Country_And_Subscriber_status.csv')
-    comments_df = pd.read_csv(Path(__file__).parents[0] / 'All_Comments_Final.csv')
-    performance_df = pd.read_csv(Path(__file__).parents[0] / 'Video_Performance_Over_Time.csv')
+    agg_df = pd.read_csv(Path(__file__).parents[0] / 'data/Youtube_Dashboard/Aggregated_Metrics_By_Video.csv').iloc[1:, :]
+    subscriber_df = pd.read_csv(Path(__file__).parents[0] / 'data/Youtube_Dashboard/Aggregated_Metrics_By_Country_And_Subscriber_status.csv')
+    comments_df = pd.read_csv(Path(__file__).parents[0] / 'data/Youtube_Dashboard/All_Comments_Final.csv')
+    performance_df = pd.read_csv(Path(__file__).parents[0] / 'data/Youtube_Dashboard/Video_Performance_Over_Time.csv')
 
     # Manipulations to datasets
     agg_df.columns = ['Video', 'Video title', 'Video publish time', 'Comments added', 'Shares', 'Dislikes', 'Likes', 'Subscribers lost',
