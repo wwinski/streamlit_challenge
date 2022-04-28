@@ -2,7 +2,7 @@
 import pandas as pd
 import numpy as np
 import plotly.graph_objects as go
-import plotly.express as pval
+import plotly.express as px
 import streamlit as st
 from datetime import datetime
 
@@ -35,7 +35,9 @@ def load_data():
     agg_df.sort_values('Video publish time', ascending=False, inplace=True)
     performance_df['Date'] = pd.to_datetime(performance_df['Date'])
 
-    return (agg_df, subscriber_df, comments_df, performance_df, get_agg_diff(agg_df))
+    (performance_diff, views_cumulative) = get_daily_data(agg_df, performance_df)
+
+    return (agg_df, subscriber_df, comments_df, performance_df, get_agg_diff(agg_df), performance_diff, views_cumulative)
 
 
 def get_agg_diff(agg_df):
@@ -47,8 +49,30 @@ def get_agg_diff(agg_df):
     # Get differenced values from the median
     numeric_cols = np.array((diff_df.dtypes == 'float64') | (diff_df.dtypes == 'int64'))
     diff_df.iloc[:,numeric_cols] = (diff_df.iloc[:,numeric_cols] - median_agg).div(median_agg)
+    diff_df['Publish_date'] = diff_df['Video publish time'].apply(lambda val: val.date())  # Format to string date
 
     return diff_df
+
+
+def get_daily_data(agg_df, performance_df):
+    #merge daily data with publish data to get delta 
+    performance_diff = pd.merge(performance_df, agg_df.loc[:, ['Video','Video publish time']], left_on='External Video ID', right_on='Video')
+    performance_diff['days_published'] = (performance_diff['Date'] - performance_diff['Video publish time']).dt.days
+
+    # get last 12 months of data rather than all data 
+    date_12mo = agg_df['Video publish time'].max() - pd.DateOffset(months=12)
+    performance_diff_year = performance_diff[performance_diff['Video publish time'] >= date_12mo]
+
+    # get daily view data (first 30), median & percentiles 
+    agg_funcs = [np.mean, np.median, lambda x: np.percentile(x, 80), lambda x: np.percentile(x, 20)]
+    views_days = pd.pivot_table(performance_diff_year, index='days_published', values='Views', aggfunc=agg_funcs).reset_index()
+    views_days.columns = ['days_published', 'mean_views', 'median_views', '80pct_views', '20pct_views']
+    views_days = views_days[views_days['days_published'].between(0,30)]
+    views_cumulative = views_days.loc[:, ['days_published', 'median_views', '80pct_views', '20pct_views']] 
+    views_cumulative.loc[:, ['median_views', '80pct_views', '20pct_views']] = views_cumulative.loc[:, ['median_views', '80pct_views', '20pct_views']].cumsum()
+
+    return (performance_diff, views_cumulative)
+
 
 
 def write_aggregate_metrics(agg_df, diff_df):
@@ -59,9 +83,9 @@ def write_aggregate_metrics(agg_df, diff_df):
     
     # Get median comparison from 6mo vs 12mo lookback
     agg_cols = ['Video publish time','Views','Likes','Subscribers','Shares','Comments added','RPM(USD)','Average % viewed','Avg_duration_sec', 'Engagement_ratio','Views / sub gained']
-    df_agg_metrics = agg_df[agg_cols]
-    metric_date_6mo = df_agg_metrics['Video publish time'].max() - pd.DateOffset(months =6)
-    metric_date_12mo = df_agg_metrics['Video publish time'].max() - pd.DateOffset(months =12)
+    df_agg_metrics = agg_df[agg_cols].copy()
+    metric_date_6mo = df_agg_metrics['Video publish time'].max() - pd.DateOffset(months=6)
+    metric_date_12mo = df_agg_metrics['Video publish time'].max() - pd.DateOffset(months=12)
     metric_medians_6mo = df_agg_metrics[df_agg_metrics['Video publish time'] >= metric_date_6mo].median()
     metric_medians_12mo = df_agg_metrics[df_agg_metrics['Video publish time'] >= metric_date_12mo].median()
 
@@ -75,7 +99,6 @@ def write_aggregate_metrics(agg_df, diff_df):
 
     # Write the data to a visual df
     agg_cols = ['Video title','Publish_date','Views','Likes','Subscribers','Shares','Comments added','RPM(USD)','Average % viewed','Avg_duration_sec', 'Engagement_ratio','Views / sub gained']
-    diff_df['Publish_date'] = diff_df['Video publish time'].apply(lambda val: val.date())  # Format to string date
     final_df = diff_df.loc[:, agg_cols]  # Keep only the columns we care about
     
     # For each column set the format
@@ -87,9 +110,42 @@ def write_aggregate_metrics(agg_df, diff_df):
     st.dataframe(final_df.style.hide().applymap(style_df_vals).format(df_to_pct))
 
 
-def write_individual_video_metrics():
+def write_individual_video_metrics(agg_df, subscriber_df, performance_diff, views_cumulative):
     ''' Will be used to create/format/write metrics for individual video performance '''
-    pass
+
+    st.write("Individual Video Performance")
+    
+    # Populate list of videos and get selected
+    videos = tuple(agg_df['Video title'])
+    selected_video = st.selectbox('Pick a Video:', videos)
+    
+    # Filter data to selected video
+    sub_filtered = subscriber_df[subscriber_df['Video Title'] == selected_video].copy()
+    sub_filtered['Country'] = sub_filtered['Country Code'].apply(country_code_map)
+    sub_filtered.sort_values('Is Subscribed', inplace= True)   
+    
+    # Create chart for filtered data
+    fig = px.bar(sub_filtered, x='Views', y='Is Subscribed', color='Country', orientation='h')
+    st.plotly_chart(fig)
+    
+    # Get data during the first 30 days
+    agg_time_filtered = performance_diff[performance_diff['Video Title'] == selected_video].copy()
+    first_30 = agg_time_filtered[agg_time_filtered['days_published'].between(0,30)]
+    first_30 = first_30.sort_values('days_published')
+
+    # Chart metrics for first 30 days (video aggregates vs this video)
+    fig2 = go.Figure()
+    fig2.add_trace(go.Scatter(x=views_cumulative['days_published'], y=views_cumulative['20pct_views'],
+                    mode='lines', name='20th percentile', line=dict(color='purple', dash ='dash')))
+    fig2.add_trace(go.Scatter(x=views_cumulative['days_published'], y=views_cumulative['median_views'],
+                        mode='lines', name='50th percentile', line=dict(color='black', dash ='dash')))
+    fig2.add_trace(go.Scatter(x=views_cumulative['days_published'], y=views_cumulative['80pct_views'],
+                        mode='lines', name='80th percentile', line=dict(color='royalblue', dash ='dash')))
+    fig2.add_trace(go.Scatter(x=first_30['days_published'], y=first_30['Views'].cumsum(),
+                        mode='lines', name='Current Video' ,line=dict(color='firebrick',width=8)))
+    fig2.update_layout(title='View comparison first 30 days', xaxis_title='Days Since Published', yaxis_title='Cumulative views')
+    st.plotly_chart(fig2)
+
 
 def style_df_vals(v):
     ''' Used to color the numeric values in streamlit dataframe '''
@@ -105,8 +161,18 @@ def style_df_vals(v):
         pass
 
 
-# Main
-(agg_df, subscriber_df, comments_df, performance_df, diff_df) = load_data()
+def country_code_map(country_code):
+    # Only supporting USA and India for now (majority of data)
+    if country_code == 'US':
+        return 'USA'
+    if country_code == 'IN':
+        return 'India'
+    return 'Other'
+
+
+
+##### Main #####
+(agg_df, subscriber_df, comments_df, performance_df, diff_df, performance_diff, views_cumulative) = load_data()
 
 
 add_sidebar = st.sidebar.selectbox('Aggregate or Individual Video', ('Aggregate Metrics','Individual Video Analysis'))
@@ -115,4 +181,4 @@ if add_sidebar == 'Aggregate Metrics':
     write_aggregate_metrics(agg_df, diff_df)
 elif add_sidebar == 'Individual Video Analysis':
     st.write('Ken Jee YouTube Individual Video Metrics')
-    write_individual_video_metrics()
+    write_individual_video_metrics(agg_df, subscriber_df, performance_diff, views_cumulative)
